@@ -1,4 +1,4 @@
-const githubRawURL = 'URL_RAW_JSON_ANDA_DARI_GITHUB';
+const githubRawURL = 'https://raw.githubusercontent.com/maiillll/keuanganRW18/refs/heads/main/data.json';
 
 fetch(githubRawURL)
     .then(response => response.json())
