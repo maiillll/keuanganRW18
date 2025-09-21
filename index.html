@@ -93,7 +93,8 @@
                         'Content-Type': 'application/json',
                         'X-Master-Key': JSONBIN_API_KEY,
                         'X-Bin-Name': title, // Menambahkan nama pada bin
-                           },
+                          'X-Bin-Private': 'false'
+                    },
                     body: JSON.stringify({ title: title, data: [] }) // Data awal
                 });
 
