@@ -1,131 +1,154 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manajer File Keuangan</title>
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 20px; background-color: #f4f7f6; }
-        .container { max-width: 800px; margin: auto; background: white; padding: 20px 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        h1 { color: #333; }
-        .file-list { list-style: none; padding: 0; margin-top: 20px; }
-        .file-item { display: flex; align-items: center; justify-content: space-between; padding: 15px; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 10px; background-color: #fff; }
-        .file-item:hover { background-color: #f9f9f9; }
-        .file-title { font-weight: bold; font-size: 1.2em; color: #0056b3; }
-        .file-actions a, .file-actions button { text-decoration: none; color: white; padding: 8px 12px; border-radius: 5px; margin-left: 10px; border: none; cursor: pointer; }
-        .action-edit { background-color: #007bff; }
-        .action-view { background-color: #17a2b8; }
-        .action-delete { background-color: #dc3545; }
-        .new-file-form { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; }
-        .new-file-form input { width: 70%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; }
-        .new-file-form button { padding: 10px 15px; background-color: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; }
-        #no-files-message { color: #888; }
-    </style>
+    <meta charset="UTF-8"><title>Manajer File Keuangan</title><style>/* (CSS sama seperti sebelumnya) */ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;margin:20px;background-color:#f4f7f6}.container{max-width:800px;margin:auto;background:white;padding:20px 30px;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,.1)}h1{color:#333}.file-list{list-style:none;padding:0;margin-top:20px}.file-item{display:flex;align-items:center;justify-content:space-between;padding:15px;border:1px solid #ddd;border-radius:5px;margin-bottom:10px;background-color:#fff}.file-item:hover{background-color:#f9f9f9}.file-title{font-weight:700;font-size:1.2em;color:#0056b3}.file-actions a,.file-actions button{text-decoration:none;color:#fff;padding:8px 12px;border-radius:5px;margin-left:10px;border:none;cursor:pointer}.action-edit{background-color:#007bff}.action-view{background-color:#17a2b8}.action-delete{background-color:#dc3545}.new-file-form{margin-top:30px;padding-top:20px;border-top:1px solid #eee}.new-file-form input{width:70%;padding:10px;border:1px solid #ccc;border-radius:5px}.new-file-form button{padding:10px 15px;background-color:#28a745;color:#fff;border:none;border-radius:5px;cursor:pointer}#no-files-message{color:#888}</style>
 </head>
 <body>
-
     <div class="container">
-        <h1>📁 Manajer File Keuangan</h1>
-        <p>Kelola semua data pencatatan keuangan Anda di sini.</p>
+        <h1>📁 Manajer File Keuangan (Cloud)</h1>
+        <p>Data disimpan online dan bisa diakses dari mana saja. Pastikan kunci API sudah diatur.</p>
         
         <div id="file-list-container">
-            <ul id="file-list" class="file-list">
-                </ul>
-            <p id="no-files-message" style="display: none;">Belum ada file. Buat file baru di bawah ini.</p>
+            <ul id="file-list" class="file-list"></ul>
+            <p id="no-files-message" style="display: none;">Belum ada file.</p>
         </div>
 
         <div class="new-file-form">
-            <h2>Buat File Baru</h2>
-            <input type="text" id="new-file-title" placeholder="Masukkan judul file (e.g., Keuangan Januari 2025)">
+            <h2>Buat File Baru di Cloud</h2>
+            <input type="text" id="new-file-title" placeholder="Masukkan judul file">
             <button id="create-file-btn">Buat File</button>
         </div>
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const fileList = document.getElementById('file-list');
-            const noFilesMessage = document.getElementById('no-files-message');
-            const newFileTitleInput = document.getElementById('new-file-title');
-            const createFileBtn = document.getElementById('create-file-btn');
-            
-            // Kunci utama di localStorage untuk menyimpan semua data
-            const APP_STORAGE_KEY = 'financialAppFiles';
+    document.addEventListener('DOMContentLoaded', function() {
+        const fileList = document.getElementById('file-list');
+        const noFilesMessage = document.getElementById('no-files-message');
+        const newFileTitleInput = document.getElementById('new-file-title');
+        const createFileBtn = document.getElementById('create-file-btn');
+        
+        // --- KONFIGURASI PENTING ---
+        const JSONBIN_API_KEY = '$2a$10$j2Nyj9TkaoCxOxe/PKYBtugSiQQXoaM3gIEzZm0cAjA3ibx7cyDdi'; // Ganti dengan Master Key Anda
+        const APP_STORAGE_KEY = 'financialAppFiles_Cloud'; // Ganti nama key agar tidak bentrok dengan versi lama
 
-            // Fungsi untuk mendapatkan semua data dari localStorage
-            function getFiles() {
-                const filesJSON = localStorage.getItem(APP_STORAGE_KEY);
-                return filesJSON ? JSON.parse(filesJSON) : {};
+        // Cek jika API Key belum diisi
+        if (JSONBIN_API_KEY === '$2a$10$j2Nyj9TkaoCxOxe/PKYBtugSiQQXoaM3gIEzZm0cAjA3ibx7cyDdi') {
+            alert('PENTING: Harap masukkan API Key dari JSONBin.io di dalam file index.html!');
+        }
+        
+        // Fungsi untuk mendapatkan daftar file dari localStorage (manifest lokal)
+        function getLocalManifest() {
+            const filesJSON = localStorage.getItem(APP_STORAGE_KEY);
+            return filesJSON ? JSON.parse(filesJSON) : {};
+        }
+
+        function saveLocalManifest(files) {
+            localStorage.setItem(APP_STORAGE_KEY, JSON.stringify(files));
+        }
+
+        function renderFileList() {
+            const files = getLocalManifest();
+            fileList.innerHTML = '';
+            const fileIds = Object.keys(files);
+
+            if (fileIds.length === 0) {
+                noFilesMessage.style.display = 'block';
+            } else {
+                noFilesMessage.style.display = 'none';
+                fileIds.forEach(id => {
+                    const file = files[id];
+                    const li = document.createElement('li');
+                    li.className = 'file-item';
+                    li.innerHTML = `
+                        <div>
+                            <span class="file-title">${file.title}</span><br>
+                            <small style="color:grey;">ID: ${file.binId}</small>
+                        </div>
+                        <div class="file-actions">
+                            <a href="viewer.html?binId=${file.binId}" class="action-view">Lihat</a>
+                            <a href="editor.html?localId=${id}" class="action-edit">Edit</a>
+                            <button class="action-delete" data-local-id="${id}" data-bin-id="${file.binId}">Hapus</button>
+                        </div>
+                    `;
+                    fileList.appendChild(li);
+                });
+            }
+        }
+
+        createFileBtn.addEventListener('click', async function() {
+            const title = newFileTitleInput.value.trim();
+            if (!title) {
+                alert('Judul file tidak boleh kosong!');
+                return;
             }
 
-            // Fungsi untuk menyimpan semua data ke localStorage
-            function saveFiles(files) {
-                localStorage.setItem(APP_STORAGE_KEY, JSON.stringify(files));
+            createFileBtn.disabled = true;
+            createFileBtn.textContent = 'Membuat...';
+
+            try {
+                // Buat bin baru di JSONBin
+                const response = await fetch('https://api.jsonbin.io/v3/b', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Master-Key': JSONBIN_API_KEY,
+                        'X-Bin-Name': title, // Menambahkan nama pada bin
+                        'X-Collection-Id': '650bf693e4033326aca25515' // Optional: ganti dengan collection ID Anda
+                    },
+                    body: JSON.stringify({ title: title, data: [] }) // Data awal
+                });
+
+                if (!response.ok) throw new Error('Gagal membuat bin di server.');
+                
+                const result = await response.json();
+                const binId = result.metadata.id;
+
+                // Simpan informasi file ke manifest lokal
+                const files = getLocalManifest();
+                const newLocalId = 'file_' + Date.now();
+                files[newLocalId] = { title: title, binId: binId };
+                saveLocalManifest(files);
+                
+                renderFileList();
+                newFileTitleInput.value = '';
+
+            } catch (error) {
+                alert('Terjadi kesalahan: ' + error.message);
+                console.error(error);
+            } finally {
+                createFileBtn.disabled = false;
+                createFileBtn.textContent = 'Buat File';
             }
+        });
 
-            // Fungsi untuk merender/menampilkan daftar file
-            function renderFileList() {
-                const files = getFiles();
-                fileList.innerHTML = ''; // Kosongkan daftar sebelum merender ulang
-                const fileIds = Object.keys(files);
-
-                if (fileIds.length === 0) {
-                    noFilesMessage.style.display = 'block';
-                } else {
-                    noFilesMessage.style.display = 'none';
-                    fileIds.forEach(id => {
-                        const file = files[id];
-                        const li = document.createElement('li');
-                        li.className = 'file-item';
-                        li.innerHTML = `
-                            <span class="file-title">${file.title}</span>
-                            <div class="file-actions">
-                                <a href="viewer.html?fileId=${id}" class="action-view">Lihat</a>
-                                <a href="editor.html?fileId=${id}" class="action-edit">Edit</a>
-                                <button class="action-delete" data-id="${id}">Hapus</button>
-                            </div>
-                        `;
-                        fileList.appendChild(li);
-                    });
-                }
-            }
-
-            // Event listener untuk tombol Buat File
-            createFileBtn.addEventListener('click', function() {
-                const title = newFileTitleInput.value.trim();
-                if (title) {
-                    const files = getFiles();
-                    const newFileId = 'file_' + Date.now(); // ID unik berdasarkan timestamp
-                    
-                    files[newFileId] = {
-                        title: title,
-                        data: [] // Data awal kosong
-                    };
-
-                    saveFiles(files);
-                    renderFileList();
-                    newFileTitleInput.value = ''; // Kosongkan input
-                } else {
-                    alert('Judul file tidak boleh kosong!');
-                }
-            });
-
-            // Event listener untuk tombol Hapus (menggunakan event delegation)
-            fileList.addEventListener('click', function(e) {
-                if (e.target && e.target.classList.contains('action-delete')) {
-                    const fileId = e.target.getAttribute('data-id');
-                    if (confirm('Apakah Anda yakin ingin menghapus file ini? Tindakan ini tidak bisa dibatalkan.')) {
-                        const files = getFiles();
-                        delete files[fileId];
-                        saveFiles(files);
+        fileList.addEventListener('click', async function(e) {
+            if (e.target && e.target.classList.contains('action-delete')) {
+                const localId = e.target.getAttribute('data-local-id');
+                const binId = e.target.getAttribute('data-bin-id');
+                
+                if (confirm('Anda yakin ingin menghapus file ini dari cloud dan daftar lokal?')) {
+                    try {
+                        // Hapus bin dari JSONBin
+                        await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+                            method: 'DELETE',
+                            headers: { 'X-Master-Key': JSONBIN_API_KEY }
+                        });
+                        
+                        // Hapus dari manifest lokal
+                        const files = getLocalManifest();
+                        delete files[localId];
+                        saveLocalManifest(files);
                         renderFileList();
+
+                    } catch (error) {
+                        alert('Gagal menghapus file: ' + error.message);
                     }
                 }
-            });
-
-            // Render daftar file saat halaman dimuat
-            renderFileList();
+            }
         });
+
+        renderFileList();
+    });
     </script>
 </body>
 </html>
-  
