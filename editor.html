@@ -12,13 +12,25 @@
         <div id="editor-spreadsheet"></div>
         <div id="error-message" style="color: red;"></div>
 
-        <button id="simpan-data">💾 Simpan Data ke Cloud</button>
+                <button id="simpan-data">💾 Simpan Data ke Cloud</button>
         <div id="status-simpan"></div>
+        <a id="view-public-link" href="#" target="_blank" style="display:none; margin-left: 15px; text-decoration: none; background-color: #17a2b8; color: white; padding: 10px 15px; border-radius: 5px; font-size: 16px;">Lihat Versi Publik</a>
+        
         
         <div class="summary"></div>
     </div>
 
     <script>
+                const BIN_ID = currentFile.binId;
+
+        // TAMBAHKAN BLOK KODE INI
+        const viewLink = document.getElementById('view-public-link');
+        if (viewLink) {
+            viewLink.href = `viewer.html?binId=${BIN_ID}`;
+            viewLink.style.display = 'inline-block';
+        }
+        // AKHIR BLOK TAMBAHAN
+        
     document.addEventListener('DOMContentLoaded', async function() {
         // --- KONFIGURASI PENTING ---
         const JSONBIN_API_KEY = '$2a$10$j2Nyj9TkaoCxOxe/PKYBtugSiQQXoaM3gIEzZm0cAjA3ibx7cyDdi'; // Ganti dengan Master Key Anda
