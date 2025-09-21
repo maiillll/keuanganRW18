@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editor Spreadsheet</title>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.js"></script>
+
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 20px; background-color: #f4f7f6; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        #editor-spreadsheet { width: 100%; height: 400px; overflow: hidden; margin-top: 15px; }
+        button { background-color: #28a745; color: white; padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; margin-top: 15px; }
+        button:hover { background-color: #218838; }
+        #status-simpan { margin-top: 10px; color: green; font-style: italic; }
+        .nav-link { display: inline-block; margin-top: 15px; padding: 10px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>📝 Editor Spreadsheet</h1>
+        <p>Masukkan atau ubah data di bawah ini. Setelah selesai, klik tombol "Simpan Data".</p>
+
+        <div id="editor-spreadsheet"></div>
+
+        <button id="simpan-data">💾 Simpan Data</button>
+        <div id="status-simpan"></div>
+        
+        <hr>
+        <a href="viewer.html" class="nav-link" target="_blank">Buka Halaman Viewer ➔</a>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const container = document.getElementById('editor-spreadsheet');
+            const saveButton = document.getElementById('simpan-data');
+            const saveStatus = document.getElementById('status-simpan');
+
+            // Coba muat data yang ada dari localStorage saat halaman dibuka
+            let dataAwal = [];
+            const dataTersimpan = localStorage.getItem('spreadsheetData');
+            if (dataTersimpan) {
+                dataAwal = JSON.parse(dataTersimpan);
+            }
+
+            // Inisialisasi Handsontable
+            const hot = new Handsontable(container, {
+                data: dataAwal, // Muat data yang sudah ada, atau array kosong jika belum ada
+                startRows: 10,
+                startCols: 5,
+                rowHeaders: true,
+                colHeaders: ['A', 'B', 'C', 'D', 'E'],
+                colWidths: 150,
+                contextMenu: true,
+                minSpareRows: 1, // Selalu sediakan 1 baris kosong di akhir
+                licenseKey: 'non-commercial-and-evaluation'
+            });
+
+            // Event listener untuk tombol simpan
+            saveButton.addEventListener('click', function() {
+                // Ambil semua data dari tabel
+                const tableData = hot.getData();
+
+                // Filter untuk menghapus baris kosong di akhir yang mungkin ikut tersimpan
+                const dataBersih = tableData.filter(row => !row.every(cell => cell === null || cell === ''));
+
+                // Ubah data menjadi format string JSON
+                const jsonData = JSON.stringify(dataBersih);
+
+                // Simpan ke localStorage dengan nama kunci 'spreadsheetData'
+                localStorage.setItem('spreadsheetData', jsonData);
+
+                // Tampilkan pesan sukses
+                saveStatus.textContent = `Data berhasil disimpan pada ${new Date().toLocaleTimeString()}`;
+                setTimeout(() => { saveStatus.textContent = ''; }, 3000); // Hapus pesan setelah 3 detik
+            });
+        });
+    </script>
+
+</body>
+</html>
