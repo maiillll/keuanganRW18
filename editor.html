@@ -9,15 +9,15 @@
     <script src="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.js"></script>
 
     <style>
+        /* (Salin semua style dari editor.html sebelumnya di sini) */
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 20px; background-color: #f4f7f6; }
-        .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px_10px rgba(0,0,0,0.1); }
+        .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .header-nav { display: flex; justify-content: space-between; align-items: center; }
+        .back-link { text-decoration: none; background-color: #6c757d; color: white; padding: 8px 12px; border-radius: 5px; }
         #editor-spreadsheet { width: 100%; height: 400px; overflow: hidden; margin-top: 15px; }
         button { background-color: #28a745; color: white; padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; margin-top: 15px; }
         button:hover { background-color: #218838; }
         #status-simpan { margin-top: 10px; color: green; font-style: italic; }
-        .nav-link { display: inline-block; margin-top: 15px; padding: 10px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; }
-        
-        /* CSS untuk Ringkasan Keuangan */
         .summary { margin-top: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; background-color: #fafafa; }
         .summary h3 { margin-top: 0; }
         .summary-item { display: flex; justify-content: space-between; padding: 8px 0; font-size: 1.1em; }
@@ -29,12 +29,15 @@
     </style>
 </head>
 <body>
-
     <div class="container">
-        <h1>📝 Editor Pencatatan Keuangan</h1>
+        <div class="header-nav">
+            <h1 id="file-title">Memuat...</h1>
+            <a href="index.html" class="back-link">← Kembali ke Daftar File</a>
+        </div>
         <p>Klik kanan pada tabel untuk menambah atau menghapus baris/kolom. Klik "Simpan Data" jika sudah selesai.</p>
 
         <div id="editor-spreadsheet"></div>
+        <div id="error-message" style="color: red;"></div>
 
         <button id="simpan-data">💾 Simpan Data</button>
         <div id="status-simpan"></div>
@@ -42,112 +45,95 @@
         <div class="summary">
             <h3>Ringkasan Keuangan</h3>
             <div class="summary-item">
-                <span>Total Pemasukan</span>
-                <span id="total-pemasukan" class="pemasukan">Rp 0</span>
+                <span>Total Pemasukan</span><span id="total-pemasukan" class="pemasukan">Rp 0</span>
             </div>
             <div class="summary-item">
-                <span>Total Pengeluaran</span>
-                <span id="total-pengeluaran" class="pengeluaran">Rp 0</span>
+                <span>Total Pengeluaran</span><span id="total-pengeluaran" class="pengeluaran">Rp 0</span>
             </div>
             <hr>
             <div class="summary-item">
-                <span>Sisa Saldo</span>
-                <span id="sisa-saldo" class="sisa">Rp 0</span>
+                <span>Sisa Saldo</span><span id="sisa-saldo" class="sisa">Rp 0</span>
             </div>
         </div>
-
-        <hr>
-        <a href="viewer.html" class="nav-link" target="_blank">Buka Halaman Viewer ➔</a>
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // ... (Fungsi formatRupiah dan updateSummary sama seperti sebelumnya, salin ke sini) ...
+            function formatRupiah(angka) { return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka); }
+            function updateSummary(data) { /* ... isi fungsi sama persis ... */
+                 let pemasukan = 0; let pengeluaran = 0;
+                data.forEach(row => {
+                    if (row && row[2] && parseFloat(row[3])) {
+                        const tipe = row[2]; const jumlah = parseFloat(row[3]);
+                        if (tipe === 'Pemasukan') pemasukan += jumlah;
+                        else if (tipe === 'Pengeluaran') pengeluaran += jumlah;
+                    }
+                });
+                const sisa = pemasukan - pengeluaran;
+                document.getElementById('total-pemasukan').textContent = formatRupiah(pemasukan);
+                document.getElementById('total-pengeluaran').textContent = formatRupiah(pengeluaran);
+                document.getElementById('sisa-saldo').textContent = formatRupiah(sisa);
+            }
+
+            const APP_STORAGE_KEY = 'financialAppFiles';
             const container = document.getElementById('editor-spreadsheet');
             const saveButton = document.getElementById('simpan-data');
             const saveStatus = document.getElementById('status-simpan');
-            
-            // Elemen untuk ringkasan
-            const elTotalPemasukan = document.getElementById('total-pemasukan');
-            const elTotalPengeluaran = document.getElementById('total-pengeluaran');
-            const elSisaSaldo = document.getElementById('sisa-saldo');
+            const fileTitleEl = document.getElementById('file-title');
+            const errorEl = document.getElementById('error-message');
 
-            // Fungsi untuk memformat angka menjadi format Rupiah
-            function formatRupiah(angka) {
-                return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
-            }
-            
-            // Fungsi untuk menghitung dan memperbarui ringkasan
-            function updateSummary(data) {
-                let pemasukan = 0;
-                let pengeluaran = 0;
+            // Ambil fileId dari URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const fileId = urlParams.get('fileId');
 
-                data.forEach(row => {
-                    // Pastikan baris tidak kosong dan memiliki data yang valid
-                    if (row && row[2] && parseFloat(row[3])) {
-                        const tipe = row[2];
-                        const jumlah = parseFloat(row[3]);
-
-                        if (tipe === 'Pemasukan') {
-                            pemasukan += jumlah;
-                        } else if (tipe === 'Pengeluaran') {
-                            pengeluaran += jumlah;
-                        }
-                    }
-                });
-
-                const sisa = pemasukan - pengeluaran;
-
-                elTotalPemasukan.textContent = formatRupiah(pemasukan);
-                elTotalPengeluaran.textContent = formatRupiah(pengeluaran);
-                elSisaSaldo.textContent = formatRupiah(sisa);
+            if (!fileId) {
+                errorEl.textContent = 'ERROR: ID File tidak ditemukan. Silakan kembali ke halaman utama dan pilih file.';
+                return;
             }
 
-            // Muat data yang ada dari localStorage
-            let dataAwal = [];
-            const dataTersimpan = localStorage.getItem('spreadsheetData');
-            if (dataTersimpan) {
-                dataAwal = JSON.parse(dataTersimpan);
+            function getFiles() {
+                const filesJSON = localStorage.getItem(APP_STORAGE_KEY);
+                return filesJSON ? JSON.parse(filesJSON) : {};
             }
 
-            // Inisialisasi Handsontable
+            const allFiles = getFiles();
+            const currentFile = allFiles[fileId];
+
+            if (!currentFile) {
+                errorEl.textContent = 'ERROR: File tidak ditemukan.';
+                return;
+            }
+
+            fileTitleEl.textContent = `📝 Editor: ${currentFile.title}`;
+
             const hot = new Handsontable(container, {
-                data: dataAwal,
-                startRows: 5,
-                colHeaders: ['Tanggal', 'Deskripsi', 'Tipe', 'Jumlah'],
-                columns: [
-                    { type: 'date', dateFormat: 'DD/MM/YYYY' },
-                    { type: 'text' },
-                    { type: 'dropdown', source: ['Pemasukan', 'Pengeluaran'] },
-                    { type: 'numeric', numericFormat: { pattern: '0,0' } }
-                ],
-                colWidths: [120, 300, 120, 150],
-                rowHeaders: true,
-                contextMenu: true,
-                minSpareRows: 1,
-                licenseKey: 'non-commercial-and-evaluation',
-                afterChange: function() {
-                    updateSummary(this.getData());
-                },
-                afterRemoveRow: function() {
-                    updateSummary(this.getData());
-                }
+                data: currentFile.data,
+                // ... (Konfigurasi Handsontable sama seperti sebelumnya) ...
+                startRows: 5, colHeaders: ['Tanggal', 'Deskripsi', 'Tipe', 'Jumlah'],
+                columns: [{ type: 'date', dateFormat: 'DD/MM/YYYY' }, { type: 'text' }, { type: 'dropdown', source: ['Pemasukan', 'Pengeluaran'] }, { type: 'numeric', numericFormat: { pattern: '0,0' } }],
+                colWidths: [120, 300, 120, 150], rowHeaders: true, contextMenu: true, minSpareRows: 1, licenseKey: 'non-commercial-and-evaluation',
+                afterChange: function() { updateSummary(this.getData()); },
+                afterRemoveRow: function() { updateSummary(this.getData()); }
             });
 
-            // Update ringkasan saat halaman pertama kali dimuat
             updateSummary(hot.getData());
 
-            // Event listener untuk tombol simpan
             saveButton.addEventListener('click', function() {
+                const currentData = getFiles();
                 const tableData = hot.getData();
-                const dataBersih = tableData.filter(row => !(row[0] === null && row[1] === null && row[2] === null && row[3] === null));
-                const jsonData = JSON.stringify(dataBersih);
-                localStorage.setItem('spreadsheetData', jsonData);
+                const cleanData = tableData.filter(row => !row.every(cell => cell === null || cell === ''));
 
+                // Update data untuk file yang sedang diedit
+                currentData[fileId].data = cleanData;
+
+                // Simpan kembali seluruh objek file ke localStorage
+                localStorage.setItem(APP_STORAGE_KEY, JSON.stringify(currentData));
+                
                 saveStatus.textContent = `Data berhasil disimpan pada ${new Date().toLocaleTimeString()}`;
                 setTimeout(() => { saveStatus.textContent = ''; }, 3000);
             });
         });
     </script>
-
 </body>
 </html>
