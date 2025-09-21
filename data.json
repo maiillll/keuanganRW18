@@ -1,0 +1,14 @@
+const githubRawURL = 'URL_RAW_JSON_ANDA_DARI_GITHUB';
+
+fetch(githubRawURL)
+    .then(response => response.json())
+    .then(data => {
+        const hot = new Handsontable(container, {
+            data: data,
+            colHeaders: Object.keys(data[0]), // Ambil header dari key objek pertama
+            rowHeaders: true,
+            // ...opsi lainnya
+            licenseKey: 'non-commercial-and-evaluation'
+        });
+    })
+    .catch(error => console.error('Error fetching data:', error));
