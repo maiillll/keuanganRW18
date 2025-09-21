@@ -9,7 +9,7 @@
     <script src="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.js"></script>
 
     <style>
-        /* (Salin semua style dari viewer.html sebelumnya di sini) */
+        /* (CSS tidak berubah) */
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 20px; background-color: #f4f7f6; }
         .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         h1 { color: #333; }
@@ -56,7 +56,6 @@
         
         const APP_STORAGE_KEY = 'financialAppFiles_Cloud';
 
-        // ... (Fungsi formatRupiah dan kalkulasi summary sama)
         function formatRupiah(a){return new Intl.NumberFormat("id-ID",{style:"currency",currency:"IDR",minimumFractionDigits:0}).format(a)}
         function renderSummary(data) {
             let pemasukan = 0, pengeluaran = 0;
@@ -70,10 +69,11 @@
             summaryContainer.innerHTML = `<h3>Ringkasan Keuangan</h3><div class=summary-item><span>Total Pemasukan</span><span class="pemasukan">${formatRupiah(pemasukan)}</span></div><div class=summary-item><span>Total Pengeluaran</span><span class="pengeluaran">${formatRupiah(pengeluaran)}</span></div><hr><div class=summary-item><span>Sisa Saldo</span><span class="sisa">${formatRupiah(pemasukan - pengeluaran)}</span></div>`;
         }
         
-        // Fungsi untuk memuat data dari JSONBin dan menampilkannya
         async function loadAndDisplayBinData(binId) {
             if (!binId) {
+                // Sembunyikan semua tampilan data jika tidak ada file yang dipilih
                 placeholder.style.display = 'block';
+                placeholder.innerHTML = '<p>Silakan pilih file dari menu di atas untuk menampilkan datanya.</p>';
                 container.style.display = 'none';
                 summaryContainer.style.display = 'none';
                 fileTitleEl.style.display = 'none';
@@ -91,40 +91,40 @@
                 
                 const result = await response.json();
                 
+                // PERBAIKAN KRUSIAL: Gunakan result.record
+                const record = result.record;
+                
                 placeholder.style.display = 'none';
                 container.style.display = 'block';
                 fileTitleEl.style.display = 'block';
-                fileTitleEl.textContent = `📊 Menampilkan: ${result.title}`;
+                fileTitleEl.textContent = `📊 Menampilkan: ${record.title}`;
 
-                // Kosongkan container sebelum membuat tabel baru
                 container.innerHTML = '';
                 new Handsontable(container, {
-                    data: result.data,
+                    data: record.data, // PERBAIKAN KRUSIAL
                     readOnly: true,
                     rowHeaders: true, colHeaders: ['Tanggal', 'Deskripsi', 'Tipe', 'Jumlah'],
                     columns: [{ type: 'date', dateFormat: 'DD/MM/YYYY' }, {}, {}, { type: 'numeric', numericFormat: { pattern: '0,0' } }],
                     licenseKey: 'non-commercial-and-evaluation'
                 });
                 
-                renderSummary(result.data);
+                renderSummary(record.data); // PERBAIKAN KRUSIAL
 
             } catch(error) {
                 placeholder.innerHTML = `<p style="color:red;">Gagal memuat data: ${error.message}</p>`;
             }
         }
 
-        // Fungsi utama untuk inisialisasi halaman
         function initializeViewer() {
             const localManifest = JSON.parse(localStorage.getItem(APP_STORAGE_KEY) || '{}');
             const fileIds = Object.keys(localManifest);
 
             if (fileIds.length === 0) {
                 dropdown.disabled = true;
-                placeholder.innerHTML = '<p>Tidak ada file yang ditemukan di browser ini. Harap buat file terlebih dahulu menggunakan halaman `index.html` dan `editor.html`.</p>';
+                placeholder.innerHTML = '<p>Tidak ada file yang ditemukan di browser ini. Harap buat file terlebih dahulu menggunakan halaman `index.html`.</p>';
                 return;
             }
             
-            // Isi dropdown dengan daftar file dari localStorage
             fileIds.forEach(id => {
                 const file = localManifest[id];
                 const option = document.createElement('option');
@@ -133,13 +133,11 @@
                 dropdown.appendChild(option);
             });
 
-            // Tambahkan event listener ke dropdown
             dropdown.addEventListener('change', (event) => {
                 const selectedBinId = event.target.value;
                 loadAndDisplayBinData(selectedBinId);
             });
 
-            // (Opsional) Cek jika ada binId di URL untuk deep linking
             const urlParams = new URLSearchParams(window.location.search);
             const binIdFromUrl = urlParams.get('binId');
             if (binIdFromUrl) {
@@ -153,4 +151,3 @@
     </script>
 </body>
 </html>
-
