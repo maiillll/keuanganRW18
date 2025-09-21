@@ -3,264 +3,74 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Laporan Keuangan Lengkap</title>
+    <title>Aplikasi Spreadsheet Sederhana</title>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.css" />
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+
     <style>
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f4f4f9;
-            color: #333;
-            line-height: 1.6;
-            margin: 0;
-            padding: 20px;
+            font-family: sans-serif;
+            margin: 20px;
         }
-        .container {
-            max-width: 800px;
-            margin: auto;
-            background: #fff;
-            padding: 25px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        h1, h2 {
-            text-align: center;
-            color: #0056b3;
-        }
-        form {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            margin-bottom: 30px;
-            border-bottom: 2px solid #eee;
-            padding-bottom: 30px;
-        }
-        input, select, button {
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 16px;
-        }
-        input:focus, select:focus {
-            outline: none;
-            border-color: #007bff;
-        }
-        button {
-            background-color: #007bff;
-            color: white;
-            border: none;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        table {
+        #spreadsheet {
             width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
+            height: 400px;
+            overflow: hidden;
         }
-        th, td {
-            padding: 12px 15px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
-        }
-        th {
-            background-color: #f2f2f2;
-        }
-        tbody tr:hover {
-            background-color: #f9f9f9;
-        }
-        .pemasukan {
-            color: #28a745; /* Hijau */
-            font-weight: bold;
-        }
-        .pengeluaran {
-            color: #dc3545; /* Merah */
-            font-weight: bold;
-        }
-        #total-saldo {
-            text-align: right;
-            font-size: 1.4em;
-            font-weight: bold;
-            margin-top: 20px;
-            padding: 10px;
-            border-radius: 5px;
-        }
-        .saldo-positif {
-            color: #28a745;
-        }
-        .saldo-negatif {
-            color: #dc3545;
+        h1 {
+            color: #2c3e50;
         }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>Laporan Keuangan</h1>
-
-        <h2>Input Transaksi Baru</h2>
-        <form id="form-transaksi">
-            <input type="text" id="keterangan" placeholder="Keterangan (e.g., Gaji, Bayar Listrik)" required>
-            <input type="number" id="jumlah" placeholder="Jumlah (e.g., 50000)" required>
-            <select id="tipe" required>
-                <option value="pemasukan">Pemasukan</option>
-                <option value="pengeluaran">Pengeluaran</option>
-            </select>
-            <button type="submit">Tambah Transaksi</button>
-        </form>
-
-        <h2>Data Laporan</h2>
-        <table id="tabel-laporan">
-            <thead>
-                <tr>
-                    <th>Tanggal</th>
-                    <th>Keterangan</th>
-                    <th>Jumlah</th>
-                    <th>Tipe</th>
-                </tr>
-            </thead>
-            <tbody id="data-laporan">
-                <tr><td colspan="4" style="text-align:center;">Memuat data...</td></tr>
-            </tbody>
-        </table>
-        <div id="total-saldo">
-            Saldo Akhir: Rp 0
-        </div>
-    </div>
-
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <h1>Data Inventaris Barang</h1>
+    <p>Data ini diambil langsung dari Google Sheet publik. Pengunjung hanya bisa melihat dan berinteraksi di halaman ini, namun tidak bisa mengubah data aslinya.</p>
+    
+    <div id="spreadsheet"></div>
 
     <script>
-        // --- PENTING: GANTI DENGAN KONFIGURASI FIREBASE ANDA! ---
-        // Anda bisa mendapatkan ini dari Project Settings di Firebase Console
-        const firebaseConfig = {
-            apiKey: "AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-            authDomain: "nama-proyek-anda.firebaseapp.com",
-            projectId: "nama-proyek-anda",
-            storageBucket: "nama-proyek-anda.appspot.com",
-            messagingSenderId: "1234567890",
-            appId: "1:1234567890:web:abcdef1234567890"
-        };
-        // --- BATAS AKHIR KONFIGURASI ---
+        // --- PENGATURAN ---
+        // GANTI URL INI dengan URL CSV dari Google Sheet Anda yang sudah di-publish
+        const googleSheetURL = 'URL_CSV_ANDA_DISINI';
 
-        // Inisialisasi Firebase
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        const koleksiTransaksi = db.collection('transaksi');
+        // Ambil elemen div tempat spreadsheet akan ditampilkan
+        const container = document.getElementById('spreadsheet');
 
-        // Referensi ke elemen HTML
-        const form = document.getElementById('form-transaksi');
-        const keteranganInput = document.getElementById('keterangan');
-        const jumlahInput = document.getElementById('jumlah');
-        const tipeInput = document.getElementById('tipe');
-        const tabelBody = document.getElementById('data-laporan');
-        const totalSaldoEl = document.getElementById('total-saldo');
+        // Fungsi untuk memuat dan menampilkan data
+        function loadSpreadsheet() {
+            Papa.parse(googleSheetURL, {
+                download: true, // Beritahu PapaParse untuk mengunduh file dari URL
+                header: true,   // Gunakan baris pertama sebagai header kolom
+                complete: function(results) {
+                    // Data berhasil didapat
+                    const data = results.data;
+                    const headers = results.meta.fields;
 
-        // Fungsi untuk format angka ke Rupiah
-        const formatRupiah = (angka) => {
-            return new Intl.NumberFormat('id-ID', {
-                style: 'currency',
-                currency: 'IDR',
-                minimumFractionDigits: 0
-            }).format(angka);
-        };
-
-        // Menambahkan data baru ke Firestore saat form disubmit
-        form.addEventListener('submit', (e) => {
-            e.preventDefault(); // Mencegah form me-reload halaman
-
-            // Ambil nilai dari input
-            const keterangan = keteranganInput.value;
-            const jumlah = Number(jumlahInput.value);
-            const tipe = tipeInput.value;
-
-            // Validasi sederhana
-            if (!keterangan || jumlah <= 0) {
-                alert("Harap isi keterangan dan jumlah yang valid.");
-                return;
-            }
-
-            // Kirim data ke Firebase
-            koleksiTransaksi.add({
-                keterangan: keterangan,
-                jumlah: jumlah,
-                tipe: tipe,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp() // Menambahkan waktu server
-            })
-            .then(() => {
-                console.log("Data berhasil ditambahkan!");
-                form.reset(); // Mengosongkan form setelah submit
-            })
-            .catch((error) => {
-                console.error("Error menambahkan data: ", error);
-                alert("Gagal menambahkan data. Lihat console untuk detail.");
+                    // Inisialisasi Handsontable
+                    const hot = new Handsontable(container, {
+                        data: data,
+                        colHeaders: headers,
+                        rowHeaders: true,
+                        dropdownMenu: true,
+                        filters: true,
+                        columnSorting: true,
+                        contextMenu: true,
+                        licenseKey: 'non-commercial-and-evaluation' // Kunci lisensi gratis untuk proyek non-komersial
+                    });
+                },
+                error: function(err) {
+                    console.error("Gagal memuat atau mem-parsing data:", err);
+                    container.innerHTML = "Gagal memuat data dari Google Sheet. Pastikan URL sudah benar dan telah dipublikasikan.";
+                }
             });
-        });
+        }
 
-        // Mengambil dan menampilkan data secara real-time dari Firestore
-        koleksiTransaksi.orderBy('timestamp', 'asc').onSnapshot(snapshot => {
-            tabelBody.innerHTML = ''; // Kosongkan tabel sebelum diisi data baru
-            let saldo = 0;
-            
-            if (snapshot.empty) {
-                tabelBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Belum ada data transaksi.</td></tr>';
-            } else {
-                snapshot.docs.forEach(doc => {
-                    const data = doc.data();
-
-                    // Hitung total saldo
-                    if (data.tipe === 'pemasukan') {
-                        saldo += data.jumlah;
-                    } else {
-                        saldo -= data.jumlah;
-                    }
-
-                    // Tambahkan baris baru ke tabel
-                    const row = document.createElement('tr');
-                    const tanggal = data.timestamp ? data.timestamp.toDate().toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'numeric'}) : 'Baru';
-                    
-                    row.innerHTML = `
-                        <td>${tanggal}</td>
-                        <td>${data.keterangan}</td>
-                        <td class="${data.tipe}">${formatRupiah(data.jumlah)}</td>
-                        <td><span class="${data.tipe}">${data.tipe}</span></td>
-                    `;
-                    tabelBody.appendChild(row);
-                });
-            }
-
-            // Update tampilan saldo akhir
-            totalSaldoEl.textContent = `Saldo Akhir: ${formatRupiah(saldo)}`;
-            
-            // Beri warna pada total saldo
-            if (saldo >= 0) {
-                totalSaldoEl.className = 'saldo-positif';
-            } else {
-                totalSaldoEl.className = 'saldo-negatif';
-            }
-        }, error => {
-            console.error("Gagal mengambil data: ", error);
-            tabelBody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:red;">Gagal memuat data. Periksa koneksi dan konfigurasi Firebase.</td></tr>';
-        });
-      // Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyB6YQIo-AfIjqcn4KqEpnKEugz3N1n7_EQ",
-  authDomain: "keuangan-e9865.firebaseapp.com",
-  projectId: "keuangan-e9865",
-  storageBucket: "keuangan-e9865.firebasestorage.app",
-  messagingSenderId: "462741579201",
-  appId: "1:462741579201:web:8556b660fda3caece83b40"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-
+        // Jalankan fungsi saat halaman dimuat
+        document.addEventListener('DOMContentLoaded', loadSpreadsheet);
     </script>
 
 </body>
