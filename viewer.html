@@ -9,102 +9,97 @@
     <script src="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.js"></script>
 
     <style>
+        /* (Salin semua style dari viewer.html sebelumnya di sini) */
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 20px; background-color: #f4f7f6; }
-        .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px_10px rgba(0,0,0,0.1); }
+        .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .header-nav { display: flex; justify-content: space-between; align-items: center; }
+        .back-link { text-decoration: none; background-color: #6c757d; color: white; padding: 8px 12px; border-radius: 5px; }
         #viewer-spreadsheet { width: 100%; height: 400px; overflow: hidden; margin-top: 15px; }
-        .nav-link { display: inline-block; margin-top: 15px; padding: 10px; background: #6c757d; color: white; text-decoration: none; border-radius: 5px; }
         .no-data { color: #dc3545; font-weight: bold; }
-        
         .summary { margin-top: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; background-color: #fafafa; }
         .summary h3 { margin-top: 0; }
         .summary-item { display: flex; justify-content: space-between; padding: 8px 0; font-size: 1.1em; }
-        .summary-item:not(:last-child) { border-bottom: 1px solid #eee; }
-        .summary-item span:first-child { font-weight: bold; }
         .pemasukan { color: #28a745; }
         .pengeluaran { color: #dc3545; }
         .sisa { color: #17a2b8; font-weight: bold; }
     </style>
 </head>
 <body>
-
     <div class="container">
-        <h1>📊 Viewer Data Keuangan (Read-Only)</h1>
-        <p>Data berikut diambil dari penyimpanan lokal browser. Anda tidak bisa mengedit data di halaman ini.</p>
+        <div class="header-nav">
+             <h1 id="file-title">Memuat...</h1>
+             <a href="index.html" class="back-link">← Kembali ke Daftar File</a>
+        </div>
+        <p>Data berikut bersifat Read-Only.</p>
 
         <div id="viewer-spreadsheet"></div>
-
         <div id="summary-container" class="summary" style="display:none;">
-             <h3>Ringkasan Keuangan</h3>
-            <div class="summary-item">
-                <span>Total Pemasukan</span>
-                <span id="total-pemasukan" class="pemasukan">Rp 0</span>
-            </div>
-            <div class="summary-item">
-                <span>Total Pengeluaran</span>
-                <span id="total-pengeluaran" class="pengeluaran">Rp 0</span>
-            </div>
-            <hr>
-            <div class="summary-item">
-                <span>Sisa Saldo</span>
-                <span id="sisa-saldo" class="sisa">Rp 0</span>
-            </div>
+            <h3>Ringkasan Keuangan</h3>
+             <div class="summary-item">
+                 <span>Total Pemasukan</span><span id="total-pemasukan" class="pemasukan">Rp 0</span>
+             </div>
+             <div class="summary-item">
+                 <span>Total Pengeluaran</span><span id="total-pengeluaran" class="pengeluaran">Rp 0</span>
+             </div>
+             <hr>
+             <div class="summary-item">
+                 <span>Sisa Saldo</span><span id="sisa-saldo" class="sisa">Rp 0</span>
+             </div>
         </div>
-        
-        <hr>
-        <a href="editor.html" class="nav-link">➔ Kembali ke Halaman Editor</a>
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // (Salin fungsi formatRupiah dari kode sebelumnya)
+            function formatRupiah(angka) { return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka); }
+
+            const APP_STORAGE_KEY = 'financialAppFiles';
             const container = document.getElementById('viewer-spreadsheet');
-            const summaryContainer = document.getElementById('summary-container');
-            const elTotalPemasukan = document.getElementById('total-pemasukan');
-            const elTotalPengeluaran = document.getElementById('total-pengeluaran');
-            const elSisaSaldo = document.getElementById('sisa-saldo');
+            const fileTitleEl = document.getElementById('file-title');
             
-            const jsonData = localStorage.getItem('spreadsheetData');
+            const urlParams = new URLSearchParams(window.location.search);
+            const fileId = urlParams.get('fileId');
 
-            function formatRupiah(angka) {
-                return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
+            if (!fileId) {
+                container.innerHTML = '<p class="no-data">ERROR: ID File tidak ditemukan.</p>';
+                return;
             }
 
-            if (jsonData) {
-                const data = JSON.parse(jsonData);
+            const filesJSON = localStorage.getItem(APP_STORAGE_KEY);
+            const allFiles = filesJSON ? JSON.parse(filesJSON) : {};
+            const currentFile = allFiles[fileId];
 
-                // Inisialisasi Handsontable dalam mode READ-ONLY
-                new Handsontable(container, {
-                    data: data,
-                    rowHeaders: true,
-                    colHeaders: ['Tanggal', 'Deskripsi', 'Tipe', 'Jumlah'],
-                    columns: [
-                        { type: 'date', dateFormat: 'DD/MM/YYYY' }, {}, {}, 
-                        { type: 'numeric', numericFormat: { pattern: '0,0' } }
-                    ],
-                    readOnly: true,
-                    licenseKey: 'non-commercial-and-evaluation'
-                });
-
-                // Kalkulasi untuk ringkasan
-                let pemasukan = 0;
-                let pengeluaran = 0;
-                data.forEach(row => {
-                    if (row && row[2] && parseFloat(row[3])) {
-                        if (row[2] === 'Pemasukan') pemasukan += parseFloat(row[3]);
-                        if (row[2] === 'Pengeluaran') pengeluaran += parseFloat(row[3]);
-                    }
-                });
-                
-                // Tampilkan ringkasan
-                summaryContainer.style.display = 'block';
-                elTotalPemasukan.textContent = formatRupiah(pemasukan);
-                elTotalPengeluaran.textContent = formatRupiah(pengeluaran);
-                elSisaSaldo.textContent = formatRupiah(pemasukan - pengeluaran);
-
-            } else {
-                container.innerHTML = '<p class="no-data">Belum ada data yang disimpan. Silakan buka halaman editor.</p>';
+            if (!currentFile || !currentFile.data) {
+                container.innerHTML = '<p class="no-data">ERROR: File tidak ditemukan atau data kosong.</p>';
+                return;
             }
+            
+            fileTitleEl.textContent = `📊 Viewer: ${currentFile.title}`;
+            const data = currentFile.data;
+
+            new Handsontable(container, {
+                data: data,
+                readOnly: true,
+                // (Konfigurasi viewer sama seperti sebelumnya)
+                rowHeaders: true, colHeaders: ['Tanggal', 'Deskripsi', 'Tipe', 'Jumlah'],
+                columns: [{ type: 'date', dateFormat: 'DD/MM/YYYY' }, {}, {}, { type: 'numeric', numericFormat: { pattern: '0,0' } }],
+                licenseKey: 'non-commercial-and-evaluation'
+            });
+
+            // (Logika untuk kalkulasi dan menampilkan summary sama seperti sebelumnya)
+            let pemasukan = 0, pengeluaran = 0;
+            data.forEach(row => {
+                if (row && row[2] && parseFloat(row[3])) {
+                    if (row[2] === 'Pemasukan') pemasukan += parseFloat(row[3]);
+                    if (row[2] === 'Pengeluaran') pengeluaran += parseFloat(row[3]);
+                }
+            });
+            document.getElementById('summary-container').style.display = 'block';
+            document.getElementById('total-pemasukan').textContent = formatRupiah(pemasukan);
+            document.getElementById('total-pengeluaran').textContent = formatRupiah(pengeluaran);
+            document.getElementById('sisa-saldo').textContent = formatRupiah(pemasukan - pengeluaran);
         });
     </script>
-
 </body>
 </html>
+
