@@ -3,32 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Editor Spreadsheet</title>
+    <title>Editor Keuangan</title>
     
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.css" />
     <script src="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.js"></script>
 
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 20px; background-color: #f4f7f6; }
-        .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px_10px rgba(0,0,0,0.1); }
         #editor-spreadsheet { width: 100%; height: 400px; overflow: hidden; margin-top: 15px; }
         button { background-color: #28a745; color: white; padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; margin-top: 15px; }
         button:hover { background-color: #218838; }
         #status-simpan { margin-top: 10px; color: green; font-style: italic; }
         .nav-link { display: inline-block; margin-top: 15px; padding: 10px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; }
+        
+        /* CSS untuk Ringkasan Keuangan */
+        .summary { margin-top: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; background-color: #fafafa; }
+        .summary h3 { margin-top: 0; }
+        .summary-item { display: flex; justify-content: space-between; padding: 8px 0; font-size: 1.1em; }
+        .summary-item:not(:last-child) { border-bottom: 1px solid #eee; }
+        .summary-item span:first-child { font-weight: bold; }
+        .pemasukan { color: #28a745; }
+        .pengeluaran { color: #dc3545; }
+        .sisa { color: #17a2b8; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h1>📝 Editor Spreadsheet</h1>
-        <p>Masukkan atau ubah data di bawah ini. Setelah selesai, klik tombol "Simpan Data".</p>
+        <h1>📝 Editor Pencatatan Keuangan</h1>
+        <p>Klik kanan pada tabel untuk menambah atau menghapus baris/kolom. Klik "Simpan Data" jika sudah selesai.</p>
 
         <div id="editor-spreadsheet"></div>
 
         <button id="simpan-data">💾 Simpan Data</button>
         <div id="status-simpan"></div>
         
+        <div class="summary">
+            <h3>Ringkasan Keuangan</h3>
+            <div class="summary-item">
+                <span>Total Pemasukan</span>
+                <span id="total-pemasukan" class="pemasukan">Rp 0</span>
+            </div>
+            <div class="summary-item">
+                <span>Total Pengeluaran</span>
+                <span id="total-pengeluaran" class="pengeluaran">Rp 0</span>
+            </div>
+            <hr>
+            <div class="summary-item">
+                <span>Sisa Saldo</span>
+                <span id="sisa-saldo" class="sisa">Rp 0</span>
+            </div>
+        </div>
+
         <hr>
         <a href="viewer.html" class="nav-link" target="_blank">Buka Halaman Viewer ➔</a>
     </div>
@@ -38,8 +65,44 @@
             const container = document.getElementById('editor-spreadsheet');
             const saveButton = document.getElementById('simpan-data');
             const saveStatus = document.getElementById('status-simpan');
+            
+            // Elemen untuk ringkasan
+            const elTotalPemasukan = document.getElementById('total-pemasukan');
+            const elTotalPengeluaran = document.getElementById('total-pengeluaran');
+            const elSisaSaldo = document.getElementById('sisa-saldo');
 
-            // Coba muat data yang ada dari localStorage saat halaman dibuka
+            // Fungsi untuk memformat angka menjadi format Rupiah
+            function formatRupiah(angka) {
+                return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
+            }
+            
+            // Fungsi untuk menghitung dan memperbarui ringkasan
+            function updateSummary(data) {
+                let pemasukan = 0;
+                let pengeluaran = 0;
+
+                data.forEach(row => {
+                    // Pastikan baris tidak kosong dan memiliki data yang valid
+                    if (row && row[2] && parseFloat(row[3])) {
+                        const tipe = row[2];
+                        const jumlah = parseFloat(row[3]);
+
+                        if (tipe === 'Pemasukan') {
+                            pemasukan += jumlah;
+                        } else if (tipe === 'Pengeluaran') {
+                            pengeluaran += jumlah;
+                        }
+                    }
+                });
+
+                const sisa = pemasukan - pengeluaran;
+
+                elTotalPemasukan.textContent = formatRupiah(pemasukan);
+                elTotalPengeluaran.textContent = formatRupiah(pengeluaran);
+                elSisaSaldo.textContent = formatRupiah(sisa);
+            }
+
+            // Muat data yang ada dari localStorage
             let dataAwal = [];
             const dataTersimpan = localStorage.getItem('spreadsheetData');
             if (dataTersimpan) {
@@ -48,34 +111,40 @@
 
             // Inisialisasi Handsontable
             const hot = new Handsontable(container, {
-                data: dataAwal, // Muat data yang sudah ada, atau array kosong jika belum ada
-                startRows: 10,
-                startCols: 5,
+                data: dataAwal,
+                startRows: 5,
+                colHeaders: ['Tanggal', 'Deskripsi', 'Tipe', 'Jumlah'],
+                columns: [
+                    { type: 'date', dateFormat: 'DD/MM/YYYY' },
+                    { type: 'text' },
+                    { type: 'dropdown', source: ['Pemasukan', 'Pengeluaran'] },
+                    { type: 'numeric', numericFormat: { pattern: '0,0' } }
+                ],
+                colWidths: [120, 300, 120, 150],
                 rowHeaders: true,
-                colHeaders: ['A', 'B', 'C', 'D', 'E'],
-                colWidths: 150,
                 contextMenu: true,
-                minSpareRows: 1, // Selalu sediakan 1 baris kosong di akhir
-                licenseKey: 'non-commercial-and-evaluation'
+                minSpareRows: 1,
+                licenseKey: 'non-commercial-and-evaluation',
+                afterChange: function() {
+                    updateSummary(this.getData());
+                },
+                afterRemoveRow: function() {
+                    updateSummary(this.getData());
+                }
             });
+
+            // Update ringkasan saat halaman pertama kali dimuat
+            updateSummary(hot.getData());
 
             // Event listener untuk tombol simpan
             saveButton.addEventListener('click', function() {
-                // Ambil semua data dari tabel
                 const tableData = hot.getData();
-
-                // Filter untuk menghapus baris kosong di akhir yang mungkin ikut tersimpan
-                const dataBersih = tableData.filter(row => !row.every(cell => cell === null || cell === ''));
-
-                // Ubah data menjadi format string JSON
+                const dataBersih = tableData.filter(row => !(row[0] === null && row[1] === null && row[2] === null && row[3] === null));
                 const jsonData = JSON.stringify(dataBersih);
-
-                // Simpan ke localStorage dengan nama kunci 'spreadsheetData'
                 localStorage.setItem('spreadsheetData', jsonData);
 
-                // Tampilkan pesan sukses
                 saveStatus.textContent = `Data berhasil disimpan pada ${new Date().toLocaleTimeString()}`;
-                setTimeout(() => { saveStatus.textContent = ''; }, 3000); // Hapus pesan setelah 3 detik
+                setTimeout(() => { saveStatus.textContent = ''; }, 3000);
             });
         });
     </script>
