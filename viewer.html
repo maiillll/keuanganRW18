@@ -3,26 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Viewer Data</title>
+    <title>Viewer Data Keuangan</title>
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.css" />
     <script src="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.js"></script>
 
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 20px; background-color: #f4f7f6; }
-        .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        #viewer-spreadsheet { width: 100%; height: 450px; overflow: hidden; margin-top: 15px; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px_10px rgba(0,0,0,0.1); }
+        #viewer-spreadsheet { width: 100%; height: 400px; overflow: hidden; margin-top: 15px; }
         .nav-link { display: inline-block; margin-top: 15px; padding: 10px; background: #6c757d; color: white; text-decoration: none; border-radius: 5px; }
         .no-data { color: #dc3545; font-weight: bold; }
+        
+        .summary { margin-top: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; background-color: #fafafa; }
+        .summary h3 { margin-top: 0; }
+        .summary-item { display: flex; justify-content: space-between; padding: 8px 0; font-size: 1.1em; }
+        .summary-item:not(:last-child) { border-bottom: 1px solid #eee; }
+        .summary-item span:first-child { font-weight: bold; }
+        .pemasukan { color: #28a745; }
+        .pengeluaran { color: #dc3545; }
+        .sisa { color: #17a2b8; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h1>📊 Viewer Data (Read-Only)</h1>
+        <h1>📊 Viewer Data Keuangan (Read-Only)</h1>
         <p>Data berikut diambil dari penyimpanan lokal browser. Anda tidak bisa mengedit data di halaman ini.</p>
 
         <div id="viewer-spreadsheet"></div>
+
+        <div id="summary-container" class="summary" style="display:none;">
+             <h3>Ringkasan Keuangan</h3>
+            <div class="summary-item">
+                <span>Total Pemasukan</span>
+                <span id="total-pemasukan" class="pemasukan">Rp 0</span>
+            </div>
+            <div class="summary-item">
+                <span>Total Pengeluaran</span>
+                <span id="total-pengeluaran" class="pengeluaran">Rp 0</span>
+            </div>
+            <hr>
+            <div class="summary-item">
+                <span>Sisa Saldo</span>
+                <span id="sisa-saldo" class="sisa">Rp 0</span>
+            </div>
+        </div>
         
         <hr>
         <a href="editor.html" class="nav-link">➔ Kembali ke Halaman Editor</a>
@@ -31,26 +57,51 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const container = document.getElementById('viewer-spreadsheet');
-
-            // Ambil data JSON dari localStorage
+            const summaryContainer = document.getElementById('summary-container');
+            const elTotalPemasukan = document.getElementById('total-pemasukan');
+            const elTotalPengeluaran = document.getElementById('total-pengeluaran');
+            const elSisaSaldo = document.getElementById('sisa-saldo');
+            
             const jsonData = localStorage.getItem('spreadsheetData');
 
+            function formatRupiah(angka) {
+                return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
+            }
+
             if (jsonData) {
-                // Jika data ada, ubah kembali dari string JSON ke format array
                 const data = JSON.parse(jsonData);
 
                 // Inisialisasi Handsontable dalam mode READ-ONLY
-                const hot = new Handsontable(container, {
+                new Handsontable(container, {
                     data: data,
                     rowHeaders: true,
-                    colHeaders: true,
-                    contextMenu: false, // Matikan menu klik kanan
-                    readOnly: true, // PENTING: Membuat seluruh tabel tidak bisa diedit
+                    colHeaders: ['Tanggal', 'Deskripsi', 'Tipe', 'Jumlah'],
+                    columns: [
+                        { type: 'date', dateFormat: 'DD/MM/YYYY' }, {}, {}, 
+                        { type: 'numeric', numericFormat: { pattern: '0,0' } }
+                    ],
+                    readOnly: true,
                     licenseKey: 'non-commercial-and-evaluation'
                 });
+
+                // Kalkulasi untuk ringkasan
+                let pemasukan = 0;
+                let pengeluaran = 0;
+                data.forEach(row => {
+                    if (row && row[2] && parseFloat(row[3])) {
+                        if (row[2] === 'Pemasukan') pemasukan += parseFloat(row[3]);
+                        if (row[2] === 'Pengeluaran') pengeluaran += parseFloat(row[3]);
+                    }
+                });
+                
+                // Tampilkan ringkasan
+                summaryContainer.style.display = 'block';
+                elTotalPemasukan.textContent = formatRupiah(pemasukan);
+                elTotalPengeluaran.textContent = formatRupiah(pengeluaran);
+                elSisaSaldo.textContent = formatRupiah(pemasukan - pengeluaran);
+
             } else {
-                // Jika tidak ada data yang ditemukan
-                container.innerHTML = '<p class="no-data">Belum ada data yang disimpan. Silakan buka halaman editor untuk membuat data baru.</p>';
+                container.innerHTML = '<p class="no-data">Belum ada data yang disimpan. Silakan buka halaman editor.</p>';
             }
         });
     </script>
